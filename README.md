@@ -14,6 +14,8 @@ The downloaded ZIP contains:
 - `<name>.pgw` or `<name>.jgw` — pixel-to-coordinate world file
 - `<name>.prj` — EPSG:5514 coordinate reference system
 
+![GeoRaster plugin interface](screenshot.png)
+
 ## Install
 
 1. Download the latest `geolibre-georaster-*.zip` from the GitHub release or
