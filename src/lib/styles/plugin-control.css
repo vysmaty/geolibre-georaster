@@ -1,0 +1,184 @@
+.georaster-control,
+.georaster-panel {
+  --gr-bg: #ffffff;
+  --gr-text: #1f2937;
+  --gr-muted: #64748b;
+  --gr-border: #d8dee8;
+  --gr-input: #ffffff;
+  --gr-accent: #1769aa;
+  --gr-accent-hover: #125487;
+  --gr-error: #b42318;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  .georaster-control,
+  .georaster-panel {
+    --gr-bg: #18212f;
+    --gr-text: #e5e7eb;
+    --gr-muted: #a7b0bf;
+    --gr-border: #3b4657;
+    --gr-input: #111827;
+    --gr-accent: #3b82c4;
+    --gr-accent-hover: #60a5dc;
+    --gr-error: #ff8a80;
+  }
+}
+
+.maplibregl-ctrl-group.georaster-control {
+  background: var(--gr-bg);
+}
+
+.georaster-toggle {
+  display: grid;
+  width: 29px;
+  height: 29px;
+  padding: 4px;
+  color: var(--gr-text);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  place-items: center;
+}
+
+.georaster-toggle:hover {
+  background: color-mix(in srgb, var(--gr-text) 8%, transparent);
+}
+
+.georaster-toggle svg {
+  width: 21px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+
+.georaster-panel {
+  position: absolute;
+  z-index: 1000;
+  display: none;
+  max-width: min(380px, calc(100% - 24px));
+  max-height: calc(100% - 60px);
+  overflow: auto;
+  color: var(--gr-text);
+  background: var(--gr-bg);
+  border: 1px solid var(--gr-border);
+  border-radius: 8px;
+  box-shadow: 0 8px 28px rgb(15 23 42 / 24%);
+}
+
+.georaster-panel.expanded {
+  display: block;
+}
+
+.georaster-panel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--gr-border);
+}
+
+.georaster-panel header button {
+  padding: 0;
+  color: var(--gr-muted);
+  font-size: 22px;
+  line-height: 1;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.georaster-form {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.georaster-field {
+  display: grid;
+  gap: 5px;
+  color: var(--gr-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.georaster-field input,
+.georaster-field select {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 8px;
+  color: var(--gr-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  background: var(--gr-input);
+  border: 1px solid var(--gr-border);
+  border-radius: 5px;
+}
+
+.georaster-field input:disabled {
+  color: var(--gr-muted);
+  opacity: 1;
+}
+
+.georaster-preview,
+.georaster-status {
+  color: var(--gr-muted);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.georaster-preview {
+  padding: 8px;
+  background: color-mix(in srgb, var(--gr-accent) 7%, transparent);
+  border-radius: 5px;
+}
+
+.georaster-preview.error {
+  color: var(--gr-error);
+}
+
+.georaster-status:empty {
+  display: none;
+}
+
+.georaster-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.georaster-actions button {
+  min-height: 34px;
+  padding: 6px 12px;
+  color: var(--gr-text);
+  background: transparent;
+  border: 1px solid var(--gr-border);
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.georaster-actions button.primary {
+  color: #ffffff;
+  background: var(--gr-accent);
+  border-color: var(--gr-accent);
+}
+
+.georaster-actions button.primary:hover {
+  background: var(--gr-accent-hover);
+}
+
+.georaster-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
