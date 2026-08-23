@@ -6,7 +6,12 @@ import type {
   GeoLibreMapControlPosition,
   GeoLibrePlugin,
 } from "./lib/geolibre/host-api";
-import type { ResamplingMethod } from "./lib/georaster/types";
+import type {
+  ImageFormat,
+  OutputGeometry,
+  ResamplingMethod,
+  SourceSelection,
+} from "./lib/georaster/types";
 import "./lib/styles/plugin-control.css";
 
 type AppAPI = GeoLibreAppAPI<PluginControl>;
@@ -16,14 +21,32 @@ let position: GeoLibreMapControlPosition = "top-right";
 let pendingState: Partial<PluginState> | null = null;
 let disposeToolbarMenu: (() => void) | null = null;
 
-function createControl(): PluginControl {
+function createControl(app: AppAPI): PluginControl {
   const next = new PluginControl({
     collapsed: pendingState?.collapsed ?? true,
     panelWidth: pendingState?.panelWidth ?? 340,
-    title: "GeoRaster Export",
+    title: "GeoRaster",
+    fetchArrayBuffer: app.fetchArrayBuffer,
   });
   if (pendingState) next.setState(pendingState);
   return next;
+}
+
+function isOutputGeometry(value: unknown): value is OutputGeometry {
+  return value === "rotated" || value === "north-up";
+}
+
+function isImageFormat(value: unknown): value is ImageFormat {
+  return value === "png" || value === "jpeg";
+}
+
+function isSourceSelection(value: unknown): value is SourceSelection {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const selection = value as Record<string, unknown>;
+  return (
+    selection.kind === "visible-map" ||
+    (selection.kind === "raster" && typeof selection.sourceId === "string")
+  );
 }
 
 function isResampling(value: unknown): value is ResamplingMethod {
@@ -47,6 +70,11 @@ function isPluginState(value: unknown): value is Partial<PluginState> {
       return false;
     if ("filename" in item && typeof item.filename !== "string") return false;
     if ("resampling" in item && !isResampling(item.resampling)) return false;
+    if ("outputGeometry" in item && !isOutputGeometry(item.outputGeometry))
+      return false;
+    if ("imageFormat" in item && !isImageFormat(item.imageFormat)) return false;
+    if ("sourceSelection" in item && !isSourceSelection(item.sourceSelection))
+      return false;
   }
   return true;
 }
@@ -68,10 +96,10 @@ function registerToolbar(app: AppAPI): (() => void) | null {
 
 export const plugin: GeoLibrePlugin<PluginControl> = {
   id: "geolibre-georaster",
-  name: "GeoLibre GeoRaster Export",
+  name: "GeoRaster",
   version: packageMetadata.version,
   activate(app) {
-    control = control ?? createControl();
+    control = control ?? createControl(app);
     if (!app.addMapControl(control, position)) {
       control = null;
       return false;

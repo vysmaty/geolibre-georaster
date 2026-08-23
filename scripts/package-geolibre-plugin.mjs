@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -17,18 +17,29 @@ if (manifest.version !== packageMetadata.version) {
 }
 const outputPath = join(bundleDir, `${manifest.id}-${manifest.version}.zip`);
 
-const entries = [
-  ["plugin.json", manifestPath],
-  [manifest.entry, join(bundleDir, manifest.entry)],
-];
-
-if (manifest.style) {
-  entries.push([manifest.style, join(bundleDir, manifest.style)]);
-}
+const entries = [["plugin.json", manifestPath]];
+entries.push(...(await collectFiles(join(bundleDir, "dist"), "dist")));
 
 await mkdir(bundleDir, { recursive: true });
 await writeFile(outputPath, await createZip(entries));
 console.log(`Created ${outputPath}`);
+
+async function collectFiles(directory, archiveDirectory) {
+  const files = [];
+  for (const item of await readdir(directory, { withFileTypes: true })) {
+    const path = join(directory, item.name);
+    const archivePath = `${archiveDirectory}/${item.name}`.replaceAll(
+      "\\",
+      "/",
+    );
+    if (item.isDirectory()) {
+      files.push(...(await collectFiles(path, archivePath)));
+    } else if (item.isFile()) {
+      files.push([archivePath, path]);
+    }
+  }
+  return files;
+}
 
 async function createZip(entries) {
   const localParts = [];

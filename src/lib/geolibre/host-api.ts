@@ -134,6 +134,10 @@ export interface GeoLibreAppAPI<
   ) => boolean;
   /** Remove a previously added control from the map. */
   removeMapControl: (control: TControl) => void;
+  /** Return the host's live MapLibre map when that capability is available. */
+  getMap?: () => import("maplibre-gl").Map | null;
+  /** Fetch remote bytes through the host (Desktop may use its native network layer). */
+  fetchArrayBuffer?: (url: string) => Promise<ArrayBuffer>;
   /**
    * Open the host's native directory picker and resolve with the selected
    * files, or `null` if the user cancels. Present only on hosts that support

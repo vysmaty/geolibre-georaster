@@ -22,15 +22,26 @@ function readBounds(map: MapLibreMapType): GeographicBounds {
 function cloneStyle(
   map: MapLibreMapType,
   warnings: string[],
+  sourceId?: string,
 ): StyleSpecification {
   const style = structuredClone(map.getStyle());
   const layers = style.layers ?? [];
-  const supportedLayers = layers.filter(
-    (layer) => (layer as { type: string }).type !== "custom",
+  const omittedCustomLayers = layers.some(
+    (layer) => (layer as { type: string }).type === "custom",
   );
-  if (supportedLayers.length !== layers.length) {
+  const supportedLayers = layers.filter((layer) => {
+    if ((layer as { type: string }).type === "custom") return false;
+    if (!sourceId) return true;
+    return (layer as { source?: string }).source === sourceId;
+  });
+  if (omittedCustomLayers && !sourceId) {
     warnings.push("Custom or Deck.gl layers were omitted from the export.");
-    style.layers = supportedLayers;
+  }
+  if (supportedLayers.length !== layers.length) style.layers = supportedLayers;
+  if (sourceId) {
+    const source = style.sources[sourceId];
+    if (!source) throw new Error(`Raster source '${sourceId}' is unavailable.`);
+    style.sources = { [sourceId]: source };
   }
   return style;
 }
@@ -90,6 +101,7 @@ export async function captureVisibleMap(
   outputWidth: number,
   outputHeight: number,
   exactDimensions = false,
+  sourceId?: string,
 ): Promise<CapturedMap> {
   if (Math.abs(map.getBearing()) > 0.001 || Math.abs(map.getPitch()) > 0.001) {
     throw new Error("Set map bearing and pitch to 0° before exporting.");
@@ -104,7 +116,7 @@ export async function captureVisibleMap(
   }
 
   const warnings: string[] = [];
-  const style = cloneStyle(map, warnings);
+  const style = cloneStyle(map, warnings, sourceId);
   const [width, height] = captureSize(
     map,
     outputWidth,

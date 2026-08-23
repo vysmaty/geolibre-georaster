@@ -1,7 +1,7 @@
 {
   "name": "geolibre-georaster",
-  "version": "0.1.2",
-  "description": "Export the visible GeoLibre map as PNG, PGW and PRJ in EPSG:5514",
+  "version": "0.2.0",
+  "description": "Export visible maps and raster layers as georeferenced PNG or JPEG in EPSG:5514",
   "private": true,
   "packageManager": "pnpm@11.19.0",
   "type": "module",
@@ -108,6 +108,7 @@
   },
   "dependencies": {
     "fflate": "^0.8.3",
+    "geotiff": "^3.0.5",
     "proj4": "^2.21.0"
   }
 }

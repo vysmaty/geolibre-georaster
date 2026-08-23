@@ -1,10 +1,16 @@
 import type { IControl, Map as MapLibreMap } from "maplibre-gl";
-import { calculateOutputGrid, exportVisibleMap } from "../georaster/exporter";
+import {
+  calculateExportPreview,
+  exportVisibleMap,
+} from "../georaster/exporter";
+import { discoverRasterSources } from "../georaster/sources";
 import type {
   ExportSettings,
+  ImageFormat,
   OutputGeometry,
   ResamplingMethod,
 } from "../georaster/types";
+import { calculatePanelPosition } from "./panel-position";
 import type {
   PluginControlEvent,
   PluginControlEventHandler,
@@ -17,13 +23,17 @@ const DEFAULT_SETTINGS: ExportSettings = {
   resolution: 0.2,
   resampling: "bilinear",
   outputGeometry: "rotated",
+  imageFormat: "png",
+  sourceSelection: { kind: "visible-map" },
   filename: "geolibre_5514",
 };
 
-const DEFAULT_OPTIONS: Required<PluginControlOptions> = {
+const DEFAULT_OPTIONS: Required<
+  Omit<PluginControlOptions, "fetchArrayBuffer">
+> = {
   collapsed: true,
   position: "top-right",
-  title: "GeoRaster Export",
+  title: "GeoRaster",
   panelWidth: 340,
 };
 
@@ -47,13 +57,19 @@ export class PluginControl implements IControl {
   private exportButton?: HTMLButtonElement;
   private cancelButton?: HTMLButtonElement;
   private abortController?: AbortController;
-  private readonly options: Required<PluginControlOptions>;
+  private readonly options: Required<
+    Omit<PluginControlOptions, "fetchArrayBuffer">
+  >;
+  private readonly fetchArrayBuffer?: (url: string) => Promise<ArrayBuffer>;
   private state: PluginState;
   private readonly handlers: EventHandlers = new Map();
   private mapMoveHandler?: () => void;
+  private mapStyleHandler?: () => void;
+  private mapResizeHandler?: () => void;
 
   constructor(options?: Partial<PluginControlOptions>) {
     this.options = { ...DEFAULT_OPTIONS, ...options };
+    this.fetchArrayBuffer = options?.fetchArrayBuffer;
     this.state = {
       collapsed: this.options.collapsed,
       panelWidth: this.options.panelWidth,
@@ -66,8 +82,13 @@ export class PluginControl implements IControl {
     this.container = this.createButton();
     this.panel = this.createPanel();
     map.getContainer().appendChild(this.panel);
+    this.refreshSourceOptions();
     this.mapMoveHandler = () => this.updatePreview();
+    this.mapStyleHandler = () => this.refreshSourceOptions();
+    this.mapResizeHandler = () => this.positionPanel();
     map.on("moveend", this.mapMoveHandler);
+    map.on("styledata", this.mapStyleHandler);
+    map.on("resize", this.mapResizeHandler);
     if (!this.state.collapsed) this.expand();
     this.updatePreview();
     return this.container;
@@ -77,6 +98,10 @@ export class PluginControl implements IControl {
     this.abortController?.abort();
     if (this.map && this.mapMoveHandler)
       this.map.off("moveend", this.mapMoveHandler);
+    if (this.map && this.mapStyleHandler)
+      this.map.off("styledata", this.mapStyleHandler);
+    if (this.map && this.mapResizeHandler)
+      this.map.off("resize", this.mapResizeHandler);
     this.panel?.remove();
     this.container?.remove();
     this.map = undefined;
@@ -179,6 +204,17 @@ export class PluginControl implements IControl {
     crs.value = "EPSG:5514 — S-JTSK / Krovak East North";
     crs.disabled = true;
 
+    const source = document.createElement("select");
+    source.dataset.field = "sourceSelection";
+    source.addEventListener("change", () => {
+      this.state.settings.sourceSelection =
+        source.value === "visible-map"
+          ? { kind: "visible-map" }
+          : { kind: "raster", sourceId: source.value };
+      this.emit("statechange");
+      this.updatePreview();
+    });
+
     const resolution = document.createElement("input");
     resolution.type = "number";
     resolution.min = "0.01";
@@ -218,8 +254,8 @@ export class PluginControl implements IControl {
     const outputGeometry = document.createElement("select");
     outputGeometry.dataset.field = "outputGeometry";
     for (const [value, text] of [
-      ["rotated", "Rotated image (CAD)"],
-      ["north-up", "North-up S-JTSK grid (precise)"],
+      ["rotated", "Rotated image (less precise)"],
+      ["north-up", "Blank corners (grid aligned)"],
     ] as const) {
       const option = document.createElement("option");
       option.value = value;
@@ -231,6 +267,22 @@ export class PluginControl implements IControl {
         outputGeometry.value as OutputGeometry;
       this.emit("statechange");
       this.updatePreview();
+    });
+
+    const imageFormat = document.createElement("select");
+    imageFormat.dataset.field = "imageFormat";
+    for (const [value, text] of [
+      ["png", "PNG (lossless, transparency)"],
+      ["jpeg", "JPEG (90% quality, white background)"],
+    ] as const) {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = text;
+      imageFormat.appendChild(option);
+    }
+    imageFormat.addEventListener("change", () => {
+      this.state.settings.imageFormat = imageFormat.value as ImageFormat;
+      this.emit("statechange");
     });
 
     const filename = document.createElement("input");
@@ -263,17 +315,20 @@ export class PluginControl implements IControl {
     actions.append(this.exportButton, this.cancelButton);
 
     form.append(
+      formField("Source", source),
       formField("Target CRS", crs),
       formField("Pixel size (metres)", resolution),
       datalist,
       formField("Resampling", resampling),
       formField("Output geometry", outputGeometry),
+      formField("Image format", imageFormat),
       formField("File name", filename),
       this.preview,
       this.status,
       actions,
     );
     panel.append(header, form);
+    this.refreshSourceOptions();
     this.renderSettings();
     return panel;
   }
@@ -292,26 +347,70 @@ export class PluginControl implements IControl {
     const outputGeometry = this.panel.querySelector<HTMLSelectElement>(
       "[data-field=outputGeometry]",
     );
+    const imageFormat = this.panel.querySelector<HTMLSelectElement>(
+      "[data-field=imageFormat]",
+    );
+    const sourceSelection = this.panel.querySelector<HTMLSelectElement>(
+      "[data-field=sourceSelection]",
+    );
     if (resolution) resolution.value = String(this.state.settings.resolution);
     if (resampling) resampling.value = this.state.settings.resampling;
     if (filename) filename.value = this.state.settings.filename;
     if (outputGeometry)
       outputGeometry.value = this.state.settings.outputGeometry;
+    if (imageFormat) imageFormat.value = this.state.settings.imageFormat;
+    if (sourceSelection) {
+      sourceSelection.value =
+        this.state.settings.sourceSelection.kind === "raster"
+          ? this.state.settings.sourceSelection.sourceId
+          : "visible-map";
+    }
+    this.updatePreview();
+  }
+
+  private refreshSourceOptions(): void {
+    if (!this.panel || !this.map) return;
+    const select = this.panel.querySelector<HTMLSelectElement>(
+      "[data-field=sourceSelection]",
+    );
+    if (!select) return;
+    const selected =
+      this.state.settings.sourceSelection.kind === "raster"
+        ? this.state.settings.sourceSelection.sourceId
+        : "visible-map";
+    select.replaceChildren();
+    const visibleMap = document.createElement("option");
+    visibleMap.value = "visible-map";
+    visibleMap.textContent = "Visible map";
+    select.appendChild(visibleMap);
+    for (const raster of discoverRasterSources(this.map)) {
+      const option = document.createElement("option");
+      option.value = raster.id;
+      option.textContent = `${raster.label} (${raster.kind.toUpperCase()})`;
+      select.appendChild(option);
+    }
+    select.value = selected;
+    if (!select.value) select.value = "visible-map";
     this.updatePreview();
   }
 
   private updatePreview(): void {
     if (!this.preview || !this.map) return;
     try {
-      const grid = calculateOutputGrid(
-        this.map,
-        this.state.settings.resolution,
-        this.state.settings.outputGeometry,
-      );
+      const preview = calculateExportPreview(this.map, this.state.settings);
       this.preview.textContent =
-        `${grid.width.toLocaleString()} × ${grid.height.toLocaleString()} px · ` +
-        `${grid.pixelCount.toLocaleString()} pixels`;
+        `${preview.width.toLocaleString()} × ${preview.height.toLocaleString()} px · ` +
+        `${preview.pixelCount.toLocaleString()} pixels · ${preview.method}`;
+      if (preview.warning) this.preview.textContent += ` · ${preview.warning}`;
       this.preview.classList.remove("error");
+      const geometry = this.panel?.querySelector<HTMLSelectElement>(
+        "[data-field=outputGeometry]",
+      );
+      const resampling = this.panel?.querySelector<HTMLSelectElement>(
+        "[data-field=resampling]",
+      );
+      if (geometry) geometry.disabled = preview.directCandidate;
+      if (resampling) resampling.disabled = preview.directCandidate;
       if (this.exportButton) this.exportButton.disabled = false;
     } catch (error) {
       this.preview.textContent =
@@ -336,10 +435,11 @@ export class PluginControl implements IControl {
           if (this.status) this.status.textContent = `${phase}: ${percent}%`;
         },
         this.abortController.signal,
+        { fetchArrayBuffer: this.fetchArrayBuffer },
       );
       this.status.textContent =
         `Downloaded ${result.filename} (${result.width.toLocaleString()} × ` +
-        `${result.height.toLocaleString()} px).`;
+        `${result.height.toLocaleString()} px, ${result.method}).`;
       if (result.warnings.length) {
         this.status.textContent += ` Warning: ${result.warnings.join(" ")}`;
       }
@@ -361,7 +461,20 @@ export class PluginControl implements IControl {
     if (!this.panel || !this.container || !this.map) return;
     const button = this.container.getBoundingClientRect();
     const map = this.map.getContainer().getBoundingClientRect();
-    this.panel.style.top = `${button.bottom - map.top + 6}px`;
-    this.panel.style.right = `${map.right - button.right}px`;
+    const panel = this.panel.getBoundingClientRect();
+    const position = calculatePanelPosition(
+      button,
+      map,
+      panel.width || this.state.panelWidth,
+      panel.height || Math.min(620, map.height - 24),
+    );
+    this.panel.style.left =
+      position.left === undefined ? "" : `${position.left}px`;
+    this.panel.style.right =
+      position.right === undefined ? "" : `${position.right}px`;
+    this.panel.style.top =
+      position.top === undefined ? "" : `${position.top}px`;
+    this.panel.style.bottom =
+      position.bottom === undefined ? "" : `${position.bottom}px`;
   }
 }

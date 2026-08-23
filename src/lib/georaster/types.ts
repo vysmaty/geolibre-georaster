@@ -3,12 +3,17 @@ import type { RasterGrid } from "./grid";
 
 export type ResamplingMethod = "nearest" | "bilinear" | "cubic";
 export type OutputGeometry = "north-up" | "rotated";
+export type ImageFormat = "png" | "jpeg";
+export type SourceSelection =
+  { kind: "visible-map" } | { kind: "raster"; sourceId: string };
 
 export interface ExportSettings {
   targetCrs: "EPSG:5514";
   resolution: number;
   resampling: ResamplingMethod;
   outputGeometry: OutputGeometry;
+  imageFormat: ImageFormat;
+  sourceSelection: SourceSelection;
   filename: string;
 }
 

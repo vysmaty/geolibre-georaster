@@ -22,7 +22,22 @@ export {
   sanitizeFilename,
 } from "./lib/georaster/grid";
 export { sampleRgba } from "./lib/georaster/resampling";
-export type { ExportSettings, ResamplingMethod } from "./lib/georaster/types";
+export {
+  discoverRasterSources,
+  detectRasterSourceKind,
+  predictedExportMethod,
+} from "./lib/georaster/sources";
+export type {
+  RasterSourceDescriptor,
+  RasterSourceKind,
+} from "./lib/georaster/sources";
+export type {
+  ExportSettings,
+  ImageFormat,
+  OutputGeometry,
+  ResamplingMethod,
+  SourceSelection,
+} from "./lib/georaster/types";
 export type {
   GeoLibreAppAPI,
   GeoLibrePlugin,

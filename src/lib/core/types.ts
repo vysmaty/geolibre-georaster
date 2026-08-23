@@ -6,6 +6,7 @@ export interface PluginControlOptions {
   position?: "top-left" | "top-right" | "bottom-left" | "bottom-right";
   title?: string;
   panelWidth?: number;
+  fetchArrayBuffer?: (url: string) => Promise<ArrayBuffer>;
 }
 
 export interface PluginState {

@@ -1,8 +1,8 @@
 {
   "id": "geolibre-georaster",
-  "name": "GeoLibre GeoRaster Export",
-  "version": "0.1.2",
+  "name": "GeoRaster",
+  "version": "0.2.0",
   "entry": "dist/index.js",
-  "description": "Export the visible map as PNG, PGW and PRJ in EPSG:5514.",
+  "description": "Export visible maps and raster layers as PNG or JPEG with world files in EPSG:5514.",
   "style": "dist/style.css"
 }

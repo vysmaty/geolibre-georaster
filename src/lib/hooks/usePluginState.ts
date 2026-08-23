@@ -12,6 +12,8 @@ const DEFAULT_STATE: PluginState = {
     resolution: 0.2,
     resampling: "bilinear",
     outputGeometry: "rotated",
+    imageFormat: "png",
+    sourceSelection: { kind: "visible-map" },
     filename: "geolibre_5514",
   },
   data: {},
