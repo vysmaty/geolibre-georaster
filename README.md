@@ -11,7 +11,7 @@ The downloaded ZIP contains:
 
 ## Install
 
-1. Download `geolibre-georaster-0.1.0.zip` from the private GitHub release or
+1. Download the latest `geolibre-georaster-*.zip` from the private GitHub release or
    build it locally.
 2. In GeoLibre, open **Settings → Manage Plugins**.
 3. Install the ZIP and enable **GeoLibre GeoRaster Export**.
@@ -21,12 +21,19 @@ The downloaded ZIP contains:
 
 1. Set map bearing and pitch to `0°` and use the Mercator map projection.
 2. Choose the target pixel size. `0.20 m/px` is the default for orthophotos.
-3. Choose a resampling method:
+3. Choose an output geometry:
+   - **Rotated image (CAD)** preserves the rectangular map image and writes the
+     rotation into the PGW. It is the default and is appropriate for small CAD
+     inserts; it is an affine approximation.
+   - **North-up S-JTSK grid (precise)** performs a complete raster reprojection.
+     It is spatially more accurate over larger areas, but can contain empty corner
+     pixels because the reprojected map does not fill its rectangular S-JTSK extent.
+4. Choose a resampling method for the precise north-up mode:
    - **Bilinear** for orthophotos and continuous imagery
    - **Nearest neighbour** for categorical maps and hard pixel boundaries
    - **Cubic** for smoother imagery
-4. Review the calculated dimensions and select **Export ZIP**.
-5. Load the PNG in QGIS together with its PGW and PRJ files.
+5. Review the calculated dimensions and select **Export ZIP**.
+6. Load the PNG in QGIS together with its PGW and PRJ files.
 
 The plugin limits an export to 50 million output pixels. Increase the pixel
 size when the current map extent exceeds that limit.
@@ -60,7 +67,7 @@ pnpm run package:geolibre
 The installable bundle is created at:
 
 ```text
-geolibre-plugin/geolibre-georaster-0.1.0.zip
+geolibre-plugin/geolibre-georaster-<version>.zip
 ```
 
 The ZIP has a root `plugin.json` and self-contained `dist/index.js` and
@@ -69,7 +76,8 @@ The ZIP has a root `plugin.json` and self-contained `dist/index.js` and
 ## Česká poznámka
 
 Plugin vyexportuje aktuální mapový výřez jako `PNG + PGW + PRJ` v
-S-JTSK / EPSG:5514. Výchozí bilineární převzorkování je vhodné pro ortofoto.
+S-JTSK / EPSG:5514. Výchozí režim „Rotated image (CAD)“ vloží do PGW také
+rotaci; přesný severový režim provede skutečnou reprojekci.
 Před exportem musí být mapa bez náklonu a natočení.
 
 This repository is private and currently unlicensed.

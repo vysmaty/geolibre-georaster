@@ -1,6 +1,10 @@
 import type { IControl, Map as MapLibreMap } from "maplibre-gl";
-import { calculateExportGrid, exportVisibleMap } from "../georaster/exporter";
-import type { ExportSettings, ResamplingMethod } from "../georaster/types";
+import { calculateOutputGrid, exportVisibleMap } from "../georaster/exporter";
+import type {
+  ExportSettings,
+  OutputGeometry,
+  ResamplingMethod,
+} from "../georaster/types";
 import type {
   PluginControlEvent,
   PluginControlEventHandler,
@@ -12,6 +16,7 @@ const DEFAULT_SETTINGS: ExportSettings = {
   targetCrs: "EPSG:5514",
   resolution: 0.2,
   resampling: "bilinear",
+  outputGeometry: "rotated",
   filename: "geolibre_5514",
 };
 
@@ -210,6 +215,24 @@ export class PluginControl implements IControl {
       this.emit("statechange");
     });
 
+    const outputGeometry = document.createElement("select");
+    outputGeometry.dataset.field = "outputGeometry";
+    for (const [value, text] of [
+      ["rotated", "Rotated image (CAD)"],
+      ["north-up", "North-up S-JTSK grid (precise)"],
+    ] as const) {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = text;
+      outputGeometry.appendChild(option);
+    }
+    outputGeometry.addEventListener("change", () => {
+      this.state.settings.outputGeometry =
+        outputGeometry.value as OutputGeometry;
+      this.emit("statechange");
+      this.updatePreview();
+    });
+
     const filename = document.createElement("input");
     filename.type = "text";
     filename.dataset.field = "filename";
@@ -244,6 +267,7 @@ export class PluginControl implements IControl {
       formField("Pixel size (metres)", resolution),
       datalist,
       formField("Resampling", resampling),
+      formField("Output geometry", outputGeometry),
       formField("File name", filename),
       this.preview,
       this.status,
@@ -265,18 +289,24 @@ export class PluginControl implements IControl {
     const filename = this.panel.querySelector<HTMLInputElement>(
       "[data-field=filename]",
     );
+    const outputGeometry = this.panel.querySelector<HTMLSelectElement>(
+      "[data-field=outputGeometry]",
+    );
     if (resolution) resolution.value = String(this.state.settings.resolution);
     if (resampling) resampling.value = this.state.settings.resampling;
     if (filename) filename.value = this.state.settings.filename;
+    if (outputGeometry)
+      outputGeometry.value = this.state.settings.outputGeometry;
     this.updatePreview();
   }
 
   private updatePreview(): void {
     if (!this.preview || !this.map) return;
     try {
-      const grid = calculateExportGrid(
+      const grid = calculateOutputGrid(
         this.map,
         this.state.settings.resolution,
+        this.state.settings.outputGeometry,
       );
       this.preview.textContent =
         `${grid.width.toLocaleString()} × ${grid.height.toLocaleString()} px · ` +

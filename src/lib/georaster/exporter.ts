@@ -2,8 +2,14 @@ import { strToU8, zipSync } from "fflate";
 import type { Map as MapLibreMap } from "maplibre-gl";
 import { captureVisibleMap } from "./capture";
 import { EPSG_5514_WKT, projectedExtent } from "./crs";
-import { createRasterGrid, createWorldFile, sanitizeFilename } from "./grid";
-import type { ExportSettings } from "./types";
+import {
+  createNorthUpWorldFile,
+  createRasterGrid,
+  createRotatedRasterGrid,
+  createWorldFile,
+  sanitizeFilename,
+} from "./grid";
+import type { ExportSettings, OutputGeometry } from "./types";
 import { warpRaster } from "./warp";
 
 export type ExportPhase = "capture" | "reproject" | "package";
@@ -32,6 +38,23 @@ function mapBounds(map: MapLibreMap) {
 
 export function calculateExportGrid(map: MapLibreMap, resolution: number) {
   return createRasterGrid(projectedExtent(mapBounds(map)), resolution);
+}
+
+export function calculateRotatedExportGrid(
+  map: MapLibreMap,
+  resolution: number,
+) {
+  return createRotatedRasterGrid(mapBounds(map), resolution);
+}
+
+export function calculateOutputGrid(
+  map: MapLibreMap,
+  resolution: number,
+  outputGeometry: OutputGeometry,
+) {
+  return outputGeometry === "rotated"
+    ? calculateRotatedExportGrid(map, resolution)
+    : calculateExportGrid(map, resolution);
 }
 
 function imageDataToPng(
@@ -73,25 +96,49 @@ export async function exportVisibleMap(
   onProgress: (progress: ExportProgress) => void,
   signal?: AbortSignal,
 ): Promise<ExportResult> {
-  const grid = calculateExportGrid(map, settings.resolution);
+  const isRotated = settings.outputGeometry === "rotated";
+  const rotatedGrid = isRotated
+    ? calculateRotatedExportGrid(map, settings.resolution)
+    : undefined;
+  const northUpGrid = isRotated
+    ? undefined
+    : calculateExportGrid(map, settings.resolution);
+  const grid = rotatedGrid ?? northUpGrid;
+  if (!grid) throw new Error("An output grid could not be created.");
   const filename = sanitizeFilename(settings.filename);
   onProgress({ phase: "capture", percent: 0 });
-  const source = await captureVisibleMap(map, grid.width, grid.height);
+  const source = await captureVisibleMap(
+    map,
+    grid.width,
+    grid.height,
+    isRotated,
+  );
   if (signal?.aborted)
     throw new DOMException("Export cancelled.", "AbortError");
   onProgress({ phase: "capture", percent: 100 });
 
-  const pixels = await warpRaster(
-    { source, grid, resampling: settings.resampling },
-    (percent) => onProgress({ phase: "reproject", percent }),
-    signal,
-  );
+  let pixels: Uint8ClampedArray;
+  let worldFile: ReturnType<typeof createNorthUpWorldFile>;
+  if (rotatedGrid) {
+    pixels = source.pixels;
+    worldFile = rotatedGrid.worldFile;
+    onProgress({ phase: "reproject", percent: 100 });
+  } else if (northUpGrid) {
+    pixels = await warpRaster(
+      { source, grid: northUpGrid, resampling: settings.resampling },
+      (percent) => onProgress({ phase: "reproject", percent }),
+      signal,
+    );
+    worldFile = createNorthUpWorldFile(northUpGrid);
+  } else {
+    throw new Error("An output grid could not be created.");
+  }
   onProgress({ phase: "package", percent: 10 });
   const png = await imageDataToPng(pixels, grid.width, grid.height);
   const archive = zipSync(
     {
       [`${filename}.png`]: new Uint8Array(await png.arrayBuffer()),
-      [`${filename}.pgw`]: strToU8(createWorldFile(grid)),
+      [`${filename}.pgw`]: strToU8(createWorldFile(worldFile)),
       [`${filename}.prj`]: strToU8(`${EPSG_5514_WKT}\n`),
     },
     { level: 6 },

@@ -39,7 +39,19 @@ function captureSize(
   map: MapLibreMapType,
   outputWidth: number,
   outputHeight: number,
+  exactDimensions: boolean,
 ): [number, number] {
+  if (exactDimensions) {
+    if (
+      outputWidth > MAX_CAPTURE_DIMENSION ||
+      outputHeight > MAX_CAPTURE_DIMENSION
+    ) {
+      throw new Error(
+        `Rotated export is limited to ${MAX_CAPTURE_DIMENSION.toLocaleString("en-US")} px per side. Increase the pixel size.`,
+      );
+    }
+    return [outputWidth, outputHeight];
+  }
   const canvas = map.getCanvas();
   const baseWidth = Math.max(1, canvas.clientWidth || canvas.width);
   const baseHeight = Math.max(1, canvas.clientHeight || canvas.height);
@@ -77,6 +89,7 @@ export async function captureVisibleMap(
   map: MapLibreMapType,
   outputWidth: number,
   outputHeight: number,
+  exactDimensions = false,
 ): Promise<CapturedMap> {
   if (Math.abs(map.getBearing()) > 0.001 || Math.abs(map.getPitch()) > 0.001) {
     throw new Error("Set map bearing and pitch to 0° before exporting.");
@@ -92,7 +105,12 @@ export async function captureVisibleMap(
 
   const warnings: string[] = [];
   const style = cloneStyle(map, warnings);
-  const [width, height] = captureSize(map, outputWidth, outputHeight);
+  const [width, height] = captureSize(
+    map,
+    outputWidth,
+    outputHeight,
+    exactDimensions,
+  );
   const container = document.createElement("div");
   container.style.cssText =
     `position:fixed;left:-100000px;top:0;width:${width}px;height:${height}px;` +

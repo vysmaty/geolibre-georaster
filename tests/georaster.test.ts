@@ -6,7 +6,9 @@ import {
 } from "../src/lib/georaster/crs";
 import {
   MAX_OUTPUT_PIXELS,
+  createNorthUpWorldFile,
   createRasterGrid,
+  createRotatedRasterGrid,
   createWorldFile,
   sanitizeFilename,
 } from "../src/lib/georaster/grid";
@@ -19,6 +21,12 @@ describe("EPSG:5514 conversion", () => {
     expect(easting).toBeLessThan(-600_000);
     expect(northing).toBeGreaterThan(-1_150_000);
     expect(northing).toBeLessThan(-950_000);
+  });
+
+  it("uses the EPSG:5239 coordinate-frame rotation with Proj4js signs", () => {
+    const [easting, northing] = projectToSjtsk([14.4179, 50.1266]);
+    expect(easting).toBeCloseTo(-742453.829779, 3);
+    expect(northing).toBeCloseTo(-1038668.215222, 3);
   });
 
   it("round-trips geographic coordinates", () => {
@@ -59,7 +67,7 @@ describe("raster grid and world file", () => {
       { minX: -100, minY: -220, maxX: -80, maxY: -200 },
       2,
     );
-    expect(createWorldFile(grid)).toBe(
+    expect(createWorldFile(createNorthUpWorldFile(grid))).toBe(
       "2.0000000000\n" +
         "0.0000000000\n" +
         "0.0000000000\n" +
@@ -67,6 +75,20 @@ describe("raster grid and world file", () => {
         "-99.0000000000\n" +
         "-201.0000000000\n",
     );
+  });
+
+  it("writes rotation coefficients for a CAD-oriented viewport export", () => {
+    const grid = createRotatedRasterGrid(
+      { west: 14.4, south: 50.0, east: 14.5, north: 50.1 },
+      2,
+    );
+    const worldFile = createWorldFile(grid.worldFile)
+      .trim()
+      .split("\n")
+      .map(Number);
+    expect(worldFile[1]).not.toBeCloseTo(0, 8);
+    expect(worldFile[2]).not.toBeCloseTo(0, 8);
+    expect(grid.width * grid.height).toBe(grid.pixelCount);
   });
 
   it("rejects exports above the browser memory guard", () => {

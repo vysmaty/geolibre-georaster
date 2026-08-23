@@ -2,11 +2,13 @@ import type { GeographicBounds } from "./crs";
 import type { RasterGrid } from "./grid";
 
 export type ResamplingMethod = "nearest" | "bilinear" | "cubic";
+export type OutputGeometry = "north-up" | "rotated";
 
 export interface ExportSettings {
   targetCrs: "EPSG:5514";
   resolution: number;
   resampling: ResamplingMethod;
+  outputGeometry: OutputGeometry;
   filename: string;
 }
 
