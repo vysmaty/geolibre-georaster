@@ -29,7 +29,6 @@ geolibre-plugin/*.zip
 
 # Testing
 coverage
-/screenshot.png
 
 # Build
 dist/
