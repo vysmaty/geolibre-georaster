@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { writeArrayBuffer } from "geotiff";
-import type { StyleSpecification } from "maplibre-gl";
+import type { Map as MapLibreMap, StyleSpecification } from "maplibre-gl";
+import { PluginControl } from "../src/lib/core/PluginControl";
 import { calculatePanelPosition } from "../src/lib/core/panel-position";
 import {
   projectToSjtsk,
@@ -36,6 +37,7 @@ import {
 } from "../src/lib/georaster/exporter";
 import {
   detectRasterSourceKind,
+  deriveRasterSourceLabel,
   discoverRasterSources,
   type RasterSourceDescriptor,
 } from "../src/lib/georaster/sources";
@@ -203,6 +205,56 @@ describe("raster source discovery", () => {
       kind: "wms",
       layerIds: ["ortho-layer", "ortho-overlay"],
     });
+  });
+
+  it("uses WMS layer names instead of generated MapLibre ids", () => {
+    const style = {
+      version: 8,
+      sources: {
+        generated: {
+          type: "raster",
+          tiles: [
+            "https://example.test/wms?service=WMS&request=GetMap&layers=cuzk%3AKN",
+          ],
+        },
+      },
+      layers: [
+        {
+          id: "layer-16c050b5-21cc-4a23-ad41-555c30a25fb5-raster",
+          type: "raster",
+          source: "generated",
+        },
+      ],
+    } as StyleSpecification;
+    expect(discoverRasterSources(style)[0]?.label).toBe("KN");
+  });
+
+  it("derives a readable ArcGIS service or generated layer name", () => {
+    expect(
+      deriveRasterSourceLabel(
+        "generated",
+        [{ id: "layer-internal", type: "raster", source: "generated" }],
+        {
+          type: "raster",
+          tiles: [
+            "https://example.test/arcgis/rest/services/city/Orthophoto_2025/MapServer/tile/{z}/{y}/{x}",
+          ],
+        },
+      ),
+    ).toBe("Orthophoto 2025");
+    expect(
+      deriveRasterSourceLabel(
+        "generated",
+        [
+          {
+            id: "layer-arcgis-layer-1-raster",
+            type: "raster",
+            source: "generated",
+          },
+        ],
+        { type: "raster" },
+      ),
+    ).toBe("ArcGIS Layer 1");
   });
 
   it("recognizes ArcGIS, COG, WMTS, MBTiles and XYZ URLs", () => {
@@ -553,5 +605,60 @@ describe("panel positioning", () => {
       500,
     );
     expect(position.right).toBe(12);
+  });
+});
+
+describe("plugin defaults", () => {
+  it("uses the grid-aligned geometry for a new plugin state", () => {
+    expect(new PluginControl().getState().settings.outputGeometry).toBe(
+      "north-up",
+    );
+  });
+
+  it("disables geometry and resampling for a direct raster source", () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const style = {
+      version: 8,
+      sources: {
+        ortho: {
+          type: "raster",
+          tiles: [
+            "https://example.test/wms?service=WMS&request=GetMap&layers=KN",
+          ],
+        },
+      },
+      layers: [{ id: "ortho-raster", type: "raster", source: "ortho" }],
+    } as StyleSpecification;
+    const map = {
+      getContainer: () => container,
+      getStyle: () => style,
+      getBounds: () => ({
+        getWest: () => 14.4,
+        getSouth: () => 50,
+        getEast: () => 14.41,
+        getNorth: () => 50.01,
+      }),
+      on: () => undefined,
+      off: () => undefined,
+    } as unknown as MapLibreMap;
+    const control = new PluginControl();
+    control.setState({
+      settings: {
+        ...control.getState().settings,
+        sourceSelection: { kind: "raster", sourceId: "ortho" },
+      },
+    });
+    control.onAdd(map);
+    expect(
+      container.querySelector<HTMLSelectElement>("[data-field=resampling]")
+        ?.disabled,
+    ).toBe(true);
+    expect(
+      container.querySelector<HTMLSelectElement>("[data-field=outputGeometry]")
+        ?.disabled,
+    ).toBe(true);
+    control.onRemove();
+    container.remove();
   });
 });

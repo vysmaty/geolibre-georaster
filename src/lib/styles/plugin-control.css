@@ -126,9 +126,12 @@
   border-radius: 5px;
 }
 
-.georaster-field input:disabled {
+.georaster-field input:disabled,
+.georaster-field select:disabled {
   color: var(--gr-muted);
-  opacity: 1;
+  background: color-mix(in srgb, var(--gr-muted) 12%, var(--gr-input));
+  cursor: not-allowed;
+  opacity: 0.65;
 }
 
 .georaster-preview,

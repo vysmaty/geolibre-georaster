@@ -47,6 +47,77 @@ function queryParameter(url: string, name: string): string | undefined {
   return undefined;
 }
 
+function titleCaseIdentifier(value: string): string | undefined {
+  const clean = value
+    .replace(/^layer-/i, "")
+    .replace(/-raster$/i, "")
+    .replace(/[_-]+/g, " ")
+    .trim();
+  if (!clean || /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(clean)) {
+    return undefined;
+  }
+  return clean
+    .split(/\s+/)
+    .map((word) => {
+      if (word.toLowerCase() === "arcgis") return "ArcGIS";
+      if (/^[A-Z0-9]+$/.test(word)) return word;
+      return `${word[0]?.toUpperCase() ?? ""}${word.slice(1)}`;
+    })
+    .join(" ");
+}
+
+function wmsLayerLabel(candidate: string): string | undefined {
+  const layers = queryParameter(candidate, "layers");
+  if (!layers) return undefined;
+  const names = layers
+    .split(",")
+    .map((name) => {
+      const parts = name.split(":");
+      return parts[parts.length - 1]?.trim();
+    })
+    .filter((name): name is string => Boolean(name));
+  return names.length ? names.join(", ") : undefined;
+}
+
+function arcGisServiceLabel(candidate: string): string | undefined {
+  const match = candidate.match(
+    /\/services\/(.+?)\/(?:MapServer|ImageServer)(?:\/|$)/i,
+  );
+  const segments = match?.[1]?.split("/") ?? [];
+  const segment = segments[segments.length - 1];
+  if (!segment) return undefined;
+  try {
+    return titleCaseIdentifier(decodeURIComponent(segment));
+  } catch {
+    return titleCaseIdentifier(segment);
+  }
+}
+
+export function deriveRasterSourceLabel(
+  id: string,
+  layers: LooseLayer[],
+  source: LooseSource,
+): string {
+  const sourceMetadata = source.metadata ?? {};
+  const layerMetadata = layers[0]?.metadata ?? {};
+  const candidate = source.tiles?.[0] ?? source.url ?? "";
+  const detected = detectRasterSourceKind({
+    tiles: source.tiles ?? [],
+    url: source.url,
+    metadata: { ...sourceMetadata, ...layerMetadata },
+  });
+  return (
+    metadataLabel(layerMetadata) ??
+    metadataLabel(sourceMetadata) ??
+    (detected === "wms" ? wmsLayerLabel(candidate) : undefined) ??
+    (detected === "arcgis" ? arcGisServiceLabel(candidate) : undefined) ??
+    titleCaseIdentifier(layers[0]?.id ?? "") ??
+    titleCaseIdentifier(id) ??
+    layers[0]?.id ??
+    id
+  );
+}
+
 export function detectRasterSourceKind(
   source: Pick<RasterSourceDescriptor, "tiles" | "url" | "metadata">,
 ): RasterSourceKind {
@@ -120,11 +191,7 @@ export function discoverRasterSources(
     };
     descriptors.push({
       id,
-      label:
-        metadataLabel(layerMetadata) ??
-        metadataLabel(sourceMetadata) ??
-        layers[0]?.id ??
-        id,
+      label: deriveRasterSourceLabel(id, layers, source),
       layerIds: layers.map((layer) => layer.id),
       kind: detectRasterSourceKind(partial),
       ...partial,

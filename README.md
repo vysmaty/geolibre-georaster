@@ -25,8 +25,8 @@ The downloaded ZIP contains:
 4. Choose an output geometry when the source needs client-side reprojection:
    - **Rotated image (less precise)** preserves the rectangular map image and
      writes rotation into the world file. It is an affine approximation.
-   - **Blank corners (grid aligned)** produces a regular S-JTSK grid. The
-     reprojected visible map can leave transparent corner pixels.
+   - **Blank corners (grid aligned)** is the default and produces a regular
+     S-JTSK grid. The reprojected visible map can leave transparent corner pixels.
 5. Choose a resampling method:
    - **Bilinear** for orthophotos and continuous imagery
    - **Nearest neighbour** for categorical maps and hard pixel boundaries
@@ -95,8 +95,8 @@ entry point, stylesheet and GeoTIFF decoder chunks required at runtime.
 Plugin vyexportuje aktuální mapový výřez nebo jednu rastrovou vrstvu jako
 `PNG/JPEG + world file + PRJ` v S-JTSK / EPSG:5514. WMS, ArcGIS, nativní
 GeoTIFF/COG a vhodné WMTS se exportují přímo, pokud zdroj 5514 podporuje.
-Výchozí režim „Rotated image (less precise)“ vloží do world file také rotaci;
-„Blank corners (grid aligned)“ provede skutečnou reprojekci.
+Výchozí režim „Blank corners (grid aligned)“ provede skutečnou reprojekci;
+„Rotated image (less precise)“ vloží do world file také rotaci.
 Před exportem musí být mapa bez náklonu a natočení.
 
 This repository is private and currently unlicensed.

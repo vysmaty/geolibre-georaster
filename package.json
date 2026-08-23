@@ -1,6 +1,6 @@
 {
   "name": "geolibre-georaster",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Export visible maps and raster layers as georeferenced PNG or JPEG in EPSG:5514",
   "private": true,
   "packageManager": "pnpm@11.19.0",

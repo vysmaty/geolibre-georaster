@@ -11,7 +11,7 @@ const DEFAULT_STATE: PluginState = {
     targetCrs: "EPSG:5514",
     resolution: 0.2,
     resampling: "bilinear",
-    outputGeometry: "rotated",
+    outputGeometry: "north-up",
     imageFormat: "png",
     sourceSelection: { kind: "visible-map" },
     filename: "geolibre_5514",
