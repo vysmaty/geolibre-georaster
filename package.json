@@ -65,7 +65,7 @@
     "typescript"
   ],
   "author": "vysmaty",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/vysmaty/geolibre-georaster.git"

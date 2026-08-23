@@ -1,5 +1,10 @@
 # GeoRaster
 
+> **Project scope:** GeoRaster is intentionally focused on EPSG:5514. Support
+> for other coordinate reference systems is welcome, but it must be designed
+> and implemented by contributors; the maintainer does not currently plan to
+> add it.
+
 GeoLibre external plugin that exports the visible map or an individual raster
 layer to a georeferenced image in **S-JTSK / Krovak East North (EPSG:5514)**.
 
@@ -11,7 +16,7 @@ The downloaded ZIP contains:
 
 ## Install
 
-1. Download the latest `geolibre-georaster-*.zip` from the private GitHub release or
+1. Download the latest `geolibre-georaster-*.zip` from the GitHub release or
    build it locally.
 2. In GeoLibre, open **Settings → Manage Plugins**.
 3. Install the ZIP and enable **GeoRaster**.
@@ -99,4 +104,4 @@ Výchozí režim „Blank corners (grid aligned)“ provede skutečnou reprojekc
 „Rotated image (less precise)“ vloží do world file také rotaci.
 Před exportem musí být mapa bez náklonu a natočení.
 
-This repository is private and currently unlicensed.
+Released under the [MIT License](LICENSE).
