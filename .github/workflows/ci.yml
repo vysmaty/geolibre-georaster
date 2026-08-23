@@ -25,7 +25,7 @@ jobs:
       - run: pnpm run typecheck
       - run: pnpm run test
       - run: pnpm run package:geolibre
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: geolibre-georaster
           path: geolibre-plugin/geolibre-georaster-*.zip
