@@ -54,6 +54,10 @@ export default defineConfig({
     rollupOptions: {
       external: [],
       output: {
+        // GeoLibre imports installed external plugins from a blob: URL. Relative
+        // dynamic imports cannot be resolved from that URL, so the entry must be
+        // a single self-contained JavaScript module.
+        codeSplitting: false,
         assetFileNames: () => "style.css",
       },
     },

@@ -1,6 +1,6 @@
 {
   "name": "geolibre-georaster",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Export visible maps and raster layers as georeferenced PNG or JPEG in EPSG:5514",
   "private": true,
   "packageManager": "pnpm@11.19.0",
@@ -42,7 +42,7 @@
     "build": "pnpm run build:lib && pnpm run build:geolibre",
     "build:lib": "tsc -p tsconfig.json && vite build",
     "build:geolibre": "vite build --config vite.geolibre.config.ts",
-    "package:geolibre": "pnpm run build:geolibre && node scripts/package-geolibre-plugin.mjs",
+    "package:geolibre": "pnpm run build:geolibre && node scripts/verify-geolibre-bundle.mjs && node scripts/package-geolibre-plugin.mjs",
     "install:geolibre": "pnpm run build:geolibre && node scripts/install-geolibre-plugin.mjs",
     "serve:geolibre": "node scripts/serve-geolibre-plugin.mjs",
     "test": "vitest --run",
