@@ -1,4 +1,5 @@
 import { PluginControl } from "./lib/core/PluginControl";
+import packageMetadata from "../package.json";
 import type { PluginState } from "./lib/core/types";
 import type {
   GeoLibreAppAPI,
@@ -68,7 +69,7 @@ function registerToolbar(app: AppAPI): (() => void) | null {
 export const plugin: GeoLibrePlugin<PluginControl> = {
   id: "geolibre-georaster",
   name: "GeoLibre GeoRaster Export",
-  version: "0.1.0",
+  version: packageMetadata.version,
   activate(app) {
     control = control ?? createControl();
     if (!app.addMapControl(control, position)) {

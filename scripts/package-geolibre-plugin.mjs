@@ -5,8 +5,16 @@ import { fileURLToPath } from "node:url";
 const rootDir = dirname(dirname(fileURLToPath(import.meta.url)));
 const bundleDir = join(rootDir, "geolibre-plugin");
 const manifestPath = join(bundleDir, "plugin.json");
+const packagePath = join(rootDir, "package.json");
 const CRC_TABLE = createCrcTable();
 const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+const packageMetadata = JSON.parse(await readFile(packagePath, "utf8"));
+if (manifest.version !== packageMetadata.version) {
+  throw new Error(
+    `Plugin version mismatch: plugin.json is ${manifest.version}, ` +
+      `package.json is ${packageMetadata.version}.`,
+  );
+}
 const outputPath = join(bundleDir, `${manifest.id}-${manifest.version}.zip`);
 
 const entries = [
